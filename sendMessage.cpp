@@ -1,4 +1,4 @@
-#include<windows.h>
+#include<windows.h> //Need to use the win32 api
 #include<cstdio>
 #include<iostream>
 #include<cstdlib>
@@ -10,7 +10,7 @@
 
 using namespace std;
 
-int constructMessage(unsigned char[]);
+int constructMessage(unsigned char[]);  //The message framing function
 
 BOOL bPortReady;
 DCB dcb;
@@ -20,6 +20,9 @@ BOOL bReadRC;
 DWORD iBytesWritten;
 DWORD iBytesRead;
 
+/*Initialise a handle for the serial port and configure it
+Takes the name of the com port (ex:"\\\\.\\COM12") and the baudrate as input arguments
+Returns the handle*/
 HANDLE SerialInit(char *ComPortName, int BaudRate)
 {
 	HANDLE hComm;
@@ -32,7 +35,7 @@ HANDLE SerialInit(char *ComPortName, int BaudRate)
 		0, // no overlapped I/O
 		NULL); // null template
 
-	int i = GetLastError();
+	int i = GetLastError(); //Check if port was initialised
 	cout << "test 1" << endl;
 	switch(i)
 	{
@@ -78,6 +81,8 @@ HANDLE SerialInit(char *ComPortName, int BaudRate)
 	return hComm;
 }
 
+/*Read a single character from the serial port
+Takes the handle to the port as input argument*/
 char SerialGetc(HANDLE *hComm)
 {
 	char rxchar;
@@ -89,14 +94,16 @@ char SerialGetc(HANDLE *hComm)
 	return rxchar;
 }
 
-void SerialPutc(HANDLE *hComm, unsigned char message[])
+/*Transmit your message through the serial port
+Takes the handle to the port and the message string as input arguments*/
+void SerialPut(HANDLE *hComm, unsigned char message[])
 {
 	BOOL bWriteRC;
 	static DWORD iBytesWritten;
 	
 	bWriteRC = WriteFile(*hComm, message, 8, &iBytesWritten,NULL);
 	
-	int i = GetLastError();
+	int i = GetLastError();//Check if message was transmitted
 	cout << endl << "\ntest 2" << endl;
 	switch(i)
 	{
@@ -111,21 +118,21 @@ void SerialPutc(HANDLE *hComm, unsigned char message[])
 
 int main()
 {
-	HANDLE my=SerialInit("\\\\.\\COM12",19200);
+	HANDLE my=SerialInit("\\\\.\\COM12",19200);//initialise the com port
 	unsigned char message[8];
 	
-	if (constructMessage(message))
+	if (constructMessage(message))//construct master query
 	{
 		cout << endl;
 		for(int i=0;i<8;i++)
 		cout << setw(2) << setfill('0') << hex << +message[i];
-		SerialPutc(&my,message);
+		SerialPut(&my,message);//transmit master query
 		cout << endl;
 	}
 	
 	else return 1;
 
-	CloseHandle(my);
+	CloseHandle(my);//close the port
 	system("PAUSE");
 	return 0;
 }
@@ -174,6 +181,7 @@ static char auchCRCLo[] = {
 	0x40
 } ;
 
+//message framing function
 int constructMessage(unsigned char message[])
 {
 	int i;
