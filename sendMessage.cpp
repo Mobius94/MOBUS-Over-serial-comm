@@ -32,7 +32,14 @@ HANDLE SerialInit(char *ComPortName, int BaudRate)
 		0, // no overlapped I/O
 		NULL); // null template
 
-	cout << GetLastError() << endl;
+	int i = GetLastError();
+	cout << "test 1" << endl;
+	switch(i)
+	{
+		case 0: cout << "Port opened" << endl; break;
+		case 2: cout << "Windows error code 2: Port non-existent or not ccnnected" << endl; break;
+		default: cout << "Unknown error " << i << " Please check" << endl;
+	}
 
 	bPortReady = SetupComm(hComm, 1, 128); // set buffer sizes
 
@@ -86,16 +93,17 @@ void SerialPutc(HANDLE *hComm, unsigned char message[])
 {
 	BOOL bWriteRC;
 	static DWORD iBytesWritten;
-	unsigned char* ptr = message;
 	
-	for(int i=0;i<8;i++)
+	bWriteRC = WriteFile(*hComm, message, 8, &iBytesWritten,NULL);
+	
+	int i = GetLastError();
+	cout << endl << "\ntest 2" << endl;
+	switch(i)
 	{
-		bWriteRC = WriteFile(*hComm, ptr, 1, &iBytesWritten,NULL);
-		ptr++;
+		case 0: cout << "Query sent:" << iBytesWritten << " bytes" << endl; break;
+		case 6: cout << "Windows error code 6: Invalid port handle (port not active)" << endl; break;
+		default: cout << "Unknown error " << i << " Please check" << endl;
 	}
-	
-	cout << endl << GetLastError() << endl;
-	printf("\ntest2\n");
 
 	return;
 }
@@ -104,7 +112,6 @@ void SerialPutc(HANDLE *hComm, unsigned char message[])
 int main()
 {
 	HANDLE my=SerialInit("\\\\.\\COM12",19200);
-	printf("test1\n");
 	unsigned char message[8];
 	
 	if (constructMessage(message))
@@ -170,7 +177,7 @@ static char auchCRCLo[] = {
 int constructMessage(unsigned char message[])
 {
 	int i;
-	cout << "What would you like to do?" << endl << endl << "Option 1: Read Voltage\nOption 2: Read Current\nOption 3: Read Wattage\nOption 4: Read Frequency\nOption 5: Read all the above" << endl;
+	cout << "\nWhat would you like to do?" << endl << endl << "Option 1: Read Voltage\nOption 2: Read Current\nOption 3: Read Wattage\nOption 4: Read Frequency\nOption 5: Read all the above" << endl;
 	
 	cout << endl << "What would you like to do? (Enter the option)" << endl;
 	cin >> i;
