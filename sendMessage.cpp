@@ -35,14 +35,13 @@ HANDLE SerialInit(char *ComPortName, int BaudRate)
 		0, // no overlapped I/O
 		NULL); // null template
 
-	int i = GetLastError(); //Check if port was initialised
 	cout << "test 1" << endl;
-	switch(i)
-	{
-		case 0: cout << "Port opened" << endl; break;
-		case 2: cout << "Windows error code 2: Port non-existent or not ccnnected" << endl; break;
-		default: cout << "Unknown error " << i << " Please check" << endl;
-	}
+	if (hComm == INVALID_HANDLE_VALUE) 
+   {
+       //  Handle the error.
+       printf ("CreateFile failed with error %d.\n", GetLastError());
+       return (1);
+   }
 
 	bPortReady = SetupComm(hComm, 1, 128); // set buffer sizes
 
@@ -101,7 +100,7 @@ void SerialPut(HANDLE *hComm, unsigned char message[])
 	BOOL bWriteRC;
 	static DWORD iBytesWritten;
 	
-	bWriteRC = WriteFile(*hComm, message, 8, &iBytesWritten,NULL);
+	bWriteRC = WriteFile(*hComm, message, strlen(message), &iBytesWritten,NULL);
 	
 	int i = GetLastError();//Check if message was transmitted
 	cout << endl << "\ntest 2" << endl;
