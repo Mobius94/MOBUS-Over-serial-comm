@@ -35,13 +35,14 @@ HANDLE SerialInit(char *ComPortName, int BaudRate)
 		0, // no overlapped I/O
 		NULL); // null template
 
+	int i = GetLastError(); //Check if port was initialised
 	cout << "test 1" << endl;
-	if (hComm == INVALID_HANDLE_VALUE) 
-   {
-       //  Handle the error.
-       printf ("CreateFile failed with error %d.\n", GetLastError());
-       return (1);
-   }
+	switch(i)
+	{
+		case 0: cout << "Port opened" << endl; break;
+		case 2: cout << "Windows error code 2: Port non-existent or not ccnnected" << endl; break;
+		default: cout << "Unknown error " << i << " Please check" << endl;
+	}
 
 	bPortReady = SetupComm(hComm, 1, 128); // set buffer sizes
 
@@ -69,8 +70,8 @@ HANDLE SerialInit(char *ComPortName, int BaudRate)
 	// Communication timeouts are optional
 	bPortReady = GetCommTimeouts (hComm, &CommTimeouts);
 
-	CommTimeouts.ReadIntervalTimeout = 5;
-	CommTimeouts.ReadTotalTimeoutConstant = 5;
+	CommTimeouts.ReadIntervalTimeout = 100;
+	CommTimeouts.ReadTotalTimeoutConstant = 100;
 	CommTimeouts.ReadTotalTimeoutMultiplier = 1;
 	CommTimeouts.WriteTotalTimeoutConstant = 5;
 	CommTimeouts.WriteTotalTimeoutMultiplier = 1;
@@ -82,15 +83,14 @@ HANDLE SerialInit(char *ComPortName, int BaudRate)
 
 /*Read a single character from the serial port
 Takes the handle to the port as input argument*/
-char SerialGetc(HANDLE *hComm)
+unsigned char* SerialGet(HANDLE *hComm,unsigned char buffer[])
 {
-	char rxchar;
 	BOOL bReadRC;
 	static DWORD iBytesRead;
 
-	bReadRC = ReadFile(*hComm, &rxchar, 1, &iBytesRead, NULL);
+	bReadRC = ReadFile(*hComm, buffer, 20, &iBytesRead, NULL);
 
-	return rxchar;
+	return buffer;
 }
 
 /*Transmit your message through the serial port
@@ -100,7 +100,7 @@ void SerialPut(HANDLE *hComm, unsigned char message[])
 	BOOL bWriteRC;
 	static DWORD iBytesWritten;
 	
-	bWriteRC = WriteFile(*hComm, message, strlen(message), &iBytesWritten,NULL);
+	bWriteRC = WriteFile(*hComm, message, strlen((char*)message), &iBytesWritten,NULL);
 	
 	int i = GetLastError();//Check if message was transmitted
 	cout << endl << "\ntest 2" << endl;
@@ -118,7 +118,8 @@ void SerialPut(HANDLE *hComm, unsigned char message[])
 int main()
 {
 	HANDLE my=SerialInit("\\\\.\\COM12",19200);//initialise the com port
-	unsigned char message[8];
+	unsigned char message[8],response[20];
+	DWORD event;
 	
 	if (constructMessage(message))//construct master query
 	{
@@ -126,7 +127,17 @@ int main()
 		for(int i=0;i<8;i++)
 		cout << setw(2) << setfill('0') << hex << +message[i];
 		SerialPut(&my,message);//transmit master query
-		cout << endl;
+		if(WaitCommEvent(my,&event,NULL))
+		{
+			if(event==EV_RXCHAR)
+			{
+				SerialGet(&my,response);
+				cout << "Message recieved: " << endl;
+				for(int i=0;i<strlen((char*)response);i++)
+				cout << setw(2) << setfill('0') << hex << +response[i];
+			}
+			else cout << "Comm-recieve error: event " << event << " occurred" << endl;
+		}
 	}
 	
 	else return 1;
